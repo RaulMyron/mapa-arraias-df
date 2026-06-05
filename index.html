@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Arraiás - DF 2026</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --panel-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #dddddd;
+            --primary: #4a90e2;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        h1 {
+            margin: 0 0 15px 0;
+            font-size: 24px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        input[type="date"] {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 17px;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 17px;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot.free { background-color: #28a745; }
+        .dot.paid { background-color: #dc3545; }
+
+        #map {
+            flex: 1;
+            width: 100%;
+        }
+
+        .popup-content h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+        }
+        
+        .popup-content p {
+            margin: 2px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Mapa de Arraiás - Distrito Federal (2026)</h1>
+        <div class="controls">
+            <div class="control-group">
+                <label for="startDate">Data Inicial</label>
+                <input type="date" id="startDate" value="2026-05-01">
+            </div>
+            <div class="control-group">
+                <label for="endDate">Data Final</label>
+                <input type="date" id="endDate" value="2026-06-30">
+            </div>
+            <button onclick="filtrarEventos()">Filtrar</button>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="dot free"></span> Gratuito
+                </div>
+                <div class="legend-item">
+                    <span class="dot paid"></span> Pago
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Inicialização do mapa centrado em Brasília
+        const map = L.map('map').setView([-15.793889, -47.882778], 11);
+
+        // Camada visual do OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Grupo de marcadores para gerenciar as atualizações no mapa
+        let marcadoresLayer = L.layerGroup().addTo(map);
+
+        // Base de dados de eventos (Eventos das imagens incluídos, coordenadas nulas para evitar alucinação)
+        const eventos = [
+            { nome: "Festa Junina da Paróquia Nossa Senhora Consolata", local: "913 Norte", lat: -15.7275, lng: -47.9044, dataInicio: "2026-05-15", dataFim: "2026-05-16", gratuito: false },
+            { nome: "Arraiá do Operário", local: "Vicente Pires", lat: -15.8033, lng: -48.0261, dataInicio: "2026-05-16", dataFim: "2026-05-17", gratuito: true },
+            { nome: "Festa Junina da Paróquia São Pedro e São Paulo", local: "M Norte", lat: -15.8078, lng: -48.0963, dataInicio: "2026-05-16", dataFim: "2026-05-17", gratuito: true },
+            { nome: "Arraiá Aguas Claras", local: "Centro Universitário Uniplan", lat: -15.8354, lng: -48.0287, dataInicio: "2026-05-22", dataFim: "2026-05-23", gratuito: false },
+            { nome: "Arraiá Eduardo e Mônica", local: "Complexo Cordel - Park Way", lat: -15.8741, lng: -47.9542, dataInicio: "2026-05-23", dataFim: "2026-05-23", gratuito: false },
+            { nome: "Arraiá da ASBAC", local: "Via L4 Sul", lat: -15.8152, lng: -47.8715, dataInicio: "2026-05-29", dataFim: "2026-05-29", gratuito: false },
+            { nome: "Festa Junina São Pedro de Alcântara", local: "Lago Sul", lat: -15.8451, lng: -47.8342, dataInicio: "2026-05-29", dataFim: "2026-05-30", gratuito: true },
+            { nome: "Arraiá Legis", local: "Ascade - Asa Sul", lat: -15.8183, lng: -47.8718, dataInicio: "2026-05-30", dataFim: "2026-05-30", gratuito: false },
+            { nome: "Festa do Milho | Maple Bear Brasília", local: "Clube do Exército, SMU", lat: -15.7675, lng: -47.9351, dataInicio: "2026-05-30", dataFim: "2026-05-30", gratuito: false },
+            { nome: "Arraiá da Guadá", local: "EQS 311/312 Sul", lat: -15.8236, lng: -47.9258, dataInicio: "2026-06-04", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Arraiá do MCJB", local: "Jardim Botânico", lat: -15.8751, lng: -47.7882, dataInicio: "2026-06-04", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Festa Junina do Clube do Exército", local: "Sede SMU", lat: -15.7675, lng: -47.9351, dataInicio: "2026-06-04", dataFim: "2026-06-06", gratuito: false },
+            { nome: "10º Arraiá JK Shopping", local: "JK Shopping", lat: -15.8154, lng: -48.1132, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "16º Arraiá do Senhor Bom Jesus", local: "Ceilândia Norte", lat: -15.8105, lng: -48.1147, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: false },
+            { nome: "27º Arraiá da Cristo", local: "São Sebastião", lat: -15.9014, lng: -47.7716, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "29ª Festa Junina do Conjunto I", local: "Ceilândia Sul", lat: -15.8335, lng: -48.1064, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: false },
+            { nome: "Arraiá da Aparecida", local: "Fercal", lat: -15.5871, lng: -47.8712, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Arraiá da Escola de Música", local: "Escola de Música de Brasília", lat: -15.8085, lng: -47.8871, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: false },
+            { nome: "Arraiá da Imaculada", local: "Setor Central - Gama", lat: -16.0171, lng: -48.0644, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Arraiá da Nossa Senhora do Rosário", local: "QI 26 - Lago Sul", lat: -15.8455, lng: -47.8347, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Arraiá da São João", local: "Samambaia Norte", lat: -15.8654, lng: -48.0935, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: false },
+            { nome: "Arraiá da Saúde", local: "702 Norte", lat: -15.7824, lng: -47.8841, dataInicio: "2026-06-05", dataFim: "2026-06-14", gratuito: false },
+            { nome: "Arraiá de Santo Antônio", local: "911 Sul", lat: -15.8143, lng: -47.9056, dataInicio: "2026-06-05", dataFim: "2026-06-14", gratuito: false },
+            { nome: "Arraiá de São Miguel", local: "Riacho Fundo I", lat: -15.8821, lng: -48.0163, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Arraiá do Anchieta", local: "Paranoá", lat: -15.7725, lng: -47.7781, dataInicio: "2026-06-05", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Arraiá do Carmo", local: "Taguatinga Sul", lat: -15.8502, lng: -48.0461, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: false },
+            { nome: "Arraiá do Imaculado Coração de Maria", local: "Taguatinga Norte", lat: -15.8164, lng: -48.0683, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Arraiá do Metrópole Shopping", local: "Águas Claras", lat: -15.8382, lng: -48.0291, dataInicio: "2026-06-05", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Arraiá do Santíssimo", local: "606 L2 Sul", lat: -15.8131, lng: -47.8924, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: false },
+            { nome: "Arraiá Ponte Alta Mall", local: "Ponte Alta", lat: -16.0171, lng: -48.0644, dataInicio: "2026-06-05", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Arraiá Rosa Mística", local: "São Sebastião", lat: -15.9014, lng: -47.7716, dataInicio: "2026-06-05", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Arraiá Santa Clara", local: "SHSN Trecho 2", lat: -15.8105, lng: -48.1147, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Arraiá Santo Inácio", local: "Samambaia", lat: -15.8654, lng: -48.0935, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Arraiá São Sebastião", local: "Taguatinga Norte", lat: -15.8221, lng: -48.0854, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Catedral Rainha da Paz", local: "Eixo Monumental", lat: -15.7862, lng: -47.9175, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Divino Arraiá", local: "609 Norte", lat: -15.7483, lng: -47.8786, dataInicio: "2026-06-05", dataFim: "2026-06-13", gratuito: false },
+            { nome: "Festa Junina Clube dos Bombeiros", local: "Clube dos Bombeiros", lat: -15.8183, lng: -47.8718, dataInicio: "2026-06-05", dataFim: "2026-06-06", gratuito: false },
+            { nome: "Festa Junina Paróquia Nossa Senhora Aparecida", local: "PAD-DF", lat: -15.9984, lng: -47.5912, dataInicio: "2026-06-05", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Festa Junina Paróquia São Maximiliano", local: "Morada Nobre", lat: -15.6173, lng: -47.6565, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: false },
+            { nome: "Festa Junina Santa Bernadete", local: "Vicente Pires", lat: -15.8033, lng: -48.0261, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Paróquia São José de Anchieta", local: "Paranoá", lat: -15.7725, lng: -47.7781, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Paróquia São Pio de Pietrelcina", local: "Sudoeste", lat: -15.7981, lng: -47.9252, dataInicio: "2026-06-05", dataFim: "2026-06-14", gratuito: true },
+            { nome: "São João da Paróquia São José Operário", local: "Candangolândia", lat: -15.8512, lng: -47.9463, dataInicio: "2026-06-05", dataFim: "2026-06-07", gratuito: true },
+            { nome: "5º Arraiá Pet Solidário Noroeste", local: "Noroeste", lat: -15.7412, lng: -47.9042, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: false },
+            { nome: "Arraiá Avivados", local: "Samambaia Sul", lat: -15.8812, lng: -48.0831, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: false },
+            { nome: "Arraiá Creche Tia Angelina", local: "Varjão", lat: -15.7113, lng: -47.8774, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Arraiá da SQS 402", local: "Asa Sul", lat: -15.8073, lng: -47.8824, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Arraiá da Vizinhança", local: "PSUL - Ceilândia", lat: -15.8335, lng: -48.1064, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Arraiá do Shalom Taguá", local: "Taguatinga Norte", lat: -15.8164, lng: -48.0683, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Arraiá Junino Quintal da Fafá", local: "Núcleo Rural Rio Preto", lat: -15.6811, lng: -47.7811, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: false },
+            { nome: "Arraial do Cordel", local: "Núcleo Bandeirante", lat: -15.8702, lng: -47.9621, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: false },
+            { nome: "Festa Junina da AGEPOL", local: "713/913 Sul", lat: -15.8262, lng: -47.9171, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: false },
+            { nome: "Festa Junina da Esperança", local: "307/308 Norte", lat: -15.7511, lng: -47.8891, dataInicio: "2026-06-06", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Festa Junina na Associação Santa Clara", local: "Estrutural", lat: -15.7871, lng: -47.9942, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Festa Junina Natividade", local: "Ceilândia Norte", lat: -15.8105, lng: -48.1147, dataInicio: "2026-06-06", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Festa Junina SQS 211", local: "SQS 211", lat: -15.8201, lng: -47.9023, dataInicio: "2026-06-06", dataFim: "2026-06-06", gratuito: true },
+            { nome: "Paróquia Nossa Senhora Perpétuo Socorro", local: "Ceilândia Sul", lat: -15.8335, lng: -48.1064, dataInicio: "2026-06-06", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Santa Terezinha", local: "Cruzeiro Novo", lat: -15.7891, lng: -47.9352, dataInicio: "2026-06-06", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Colégio Católica Brasília", local: "Taguatinga", lat: -15.8521, lng: -48.0322, dataInicio: "2026-06-07", dataFim: "2026-06-07", gratuito: false },
+            { nome: "Festa Junina Nosso Lar", local: "Núcleo Bandeirante", lat: -15.8702, lng: -47.9621, dataInicio: "2026-06-07", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Matinê Nossa Senhora do Carmo", local: "Taguatinga Sul", lat: -15.8502, lng: -48.0461, dataInicio: "2026-06-07", dataFim: "2026-06-07", gratuito: true },
+            { nome: "Arraiá do Seu Zé", local: "Recanto das Emas", lat: -15.9083, lng: -48.0683, dataInicio: "2026-06-10", dataFim: "2026-06-12", gratuito: true },
+            { nome: "Festa Junina do Iate", local: "Iate Clube", lat: -15.7952, lng: -47.8341, dataInicio: "2026-06-10", dataFim: "2026-06-13", gratuito: false },
+            { nome: "Quadradinho Mix", local: "Sudoeste", lat: -15.7981, lng: -47.9252, dataInicio: "2026-06-10", dataFim: "2026-06-10", gratuito: true },
+            { nome: "Arraiá da Paróquia Santa Maria dos Pobres", local: "Paranoá", lat: -15.7725, lng: -47.7781, dataInicio: "2026-06-11", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Arraiá da ASSERTSE", local: "TSE", lat: -15.8122, lng: -47.8711, dataInicio: "2026-06-12", dataFim: "2026-06-12", gratuito: true },
+            { nome: "Arraiá da Paróquia São Francisco de Assis", local: "Tororó", lat: -15.9611, lng: -47.7712, dataInicio: "2026-06-12", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Arraiá da PSJPII", local: "Águas Claras", lat: -15.8453, lng: -48.0264, dataInicio: "2026-06-12", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Arraiá de São Vicente", local: "Taguatinga Sul", lat: -15.8502, lng: -48.0461, dataInicio: "2026-06-12", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Arraiá do CABV", local: "Sobradinho", lat: -15.6512, lng: -47.7911, dataInicio: "2026-06-12", dataFim: "2026-06-13", gratuito: false },
+            { nome: "Arraiá Festa do Sagrado Coração de Jesus", local: "Ceilândia Norte", lat: -15.8105, lng: -48.1147, dataInicio: "2026-06-12", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Arraiá Santo Antônio de Pádua", local: "Noroeste", lat: -15.7412, lng: -47.9042, dataInicio: "2026-06-12", dataFim: "2026-06-13", gratuito: true },
+            { nome: "Arraial do Ji 312 Norte", local: "SQN 312 Norte", lat: -15.7502, lng: -47.8853, dataInicio: "2026-06-12", dataFim: "2026-06-12", gratuito: true },
+            { nome: "Circuito do Padroeiro Centro-Oeste", local: "Guará II", lat: -15.8281, lng: -47.9832, dataInicio: "2026-06-12", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Festa da Padroeira", local: "Taguatinga Centro", lat: -15.8322, lng: -48.0561, dataInicio: "2026-06-12", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Festa do Padroeiro", local: "Ceilândia Sul", lat: -15.8335, lng: -48.1064, dataInicio: "2026-06-12", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Festa Junina da Escola Classe 411 Norte", local: "411 Norte", lat: -15.7621, lng: -47.8812, dataInicio: "2026-06-12", dataFim: "2026-06-12", gratuito: true },
+            { nome: "Festa Junina do Vizinhança", local: "Clube Vizinhança 604", lat: -15.8102, lng: -47.8992, dataInicio: "2026-06-12", dataFim: "2026-06-12", gratuito: true },
+            { nome: "Festa Junina Estância Jardim Botânico", local: "Jardim Botânico", lat: -15.8751, lng: -47.7882, dataInicio: "2026-06-12", dataFim: "2026-06-13", gratuito: false },
+            { nome: "Festa Junina Fogueira e Fivela", local: "Galpão 17", lat: -15.8163, lng: -47.9542, dataInicio: "2026-06-12", dataFim: "2026-06-12", gratuito: false },
+            { nome: "Festa Junina Paróquia Santa Teresinha", local: "Taguatinga Norte", lat: -15.8164, lng: -48.0683, dataInicio: "2026-06-12", dataFim: "2026-06-14", gratuito: false },
+            { nome: "Grande São João do Guará", local: "Guará II", lat: -15.8281, lng: -47.9832, dataInicio: "2026-06-12", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Paróquia da Ressurreição", local: "Ceilândia Norte", lat: -15.8105, lng: -48.1147, dataInicio: "2026-06-12", dataFim: "2026-06-21", gratuito: true },
+            { nome: "Arraiá CDJ 2026", local: "CDJ Educacional", lat: -15.8322, lng: -48.0561, dataInicio: "2026-06-13", dataFim: "2026-06-13", gratuito: false },
+            { nome: "Arraiá da Católica", local: "Colégio Católica de Brasília", lat: -15.8521, lng: -48.0322, dataInicio: "2026-06-13", dataFim: "2026-06-13", gratuito: false },
+            { nome: "Arraiá da SQS 307", local: "Asa Sul", lat: -15.8112, lng: -47.8953, dataInicio: "2026-06-13", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Arraiá da TDC", local: "Guará II", lat: -15.8281, lng: -47.9832, dataInicio: "2026-06-13", dataFim: "2026-06-13", gratuito: true },
+            { nome: "Arraiá do Dom", local: "Canil Dom Delius", lat: -15.8012, lng: -48.1021, dataInicio: "2026-06-13", dataFim: "2026-06-13", gratuito: false },
+            { nome: "Arraiá do Dotô", local: "AMBr", lat: -15.8312, lng: -47.8911, dataInicio: "2026-06-13", dataFim: "2026-06-13", gratuito: false },
+            { nome: "Festa de Santo Antônio", local: "Samambaia Sul", lat: -15.8812, lng: -48.0831, dataInicio: "2026-06-13", dataFim: "2026-06-14", gratuito: true },
+            { nome: "Festa Junina Alfa Clube Society", local: "Riacho Fundo 1/2", lat: -15.8821, lng: -48.0163, dataInicio: "2026-06-13", dataFim: "2026-06-13", gratuito: true },
+            { nome: "Festa Junina CAIC PWJM", local: "Águas Claras", lat: -15.8382, lng: -48.0291, dataInicio: "2026-06-13", dataFim: "2026-06-13", gratuito: true },
+            { nome: "Forró de seu Peu", local: "Lago Norte", lat: -15.7331, lng: -47.8502, dataInicio: "2026-06-13", dataFim: "2026-06-13", gratuito: false },
+            { nome: "Luar do Cerrado", local: "Park Way", lat: -15.8741, lng: -47.9542, dataInicio: "2026-06-13", dataFim: "2026-06-14", gratuito: false },
+            { nome: "Master Junina Lu e Si", local: "Candangolândia", lat: -15.8512, lng: -47.9463, dataInicio: "2026-06-13", dataFim: "2026-06-13", gratuito: false },
+            { nome: "2º Arraiá da Conexão", local: "Taguatinga", lat: -15.8322, lng: -48.0561, dataInicio: "2026-06-14", dataFim: "2026-06-14", gratuito: false },
+            { nome: "6º Arraiá Paz e Bem", local: "Vicente Pires", lat: -15.8033, lng: -48.0261, dataInicio: "2026-06-19", dataFim: "2026-06-21", gratuito: true },
+            { nome: "Arraiá da Sagrada", local: "Taguatinga Norte", lat: -15.8164, lng: -48.0683, dataInicio: "2026-06-19", dataFim: "2026-06-21", gratuito: true },
+            { nome: "Arraiá da Sagrada Família", local: "SMPW QD 27", lat: -15.8741, lng: -47.9542, dataInicio: "2026-06-19", dataFim: "2026-06-20", gratuito: true },
+            { nome: "Arraiá da São João", local: "Taguatinga", lat: -15.8322, lng: -48.0561, dataInicio: "2026-06-19", dataFim: "2026-06-24", gratuito: true },
+            { nome: "Arraiá da São João Paulo II", local: "Jardins Mangueiral", lat: -15.8881, lng: -47.7811, dataInicio: "2026-06-19", dataFim: "2026-06-21", gratuito: true },
+            { nome: "Arraiá das Dores", local: "Samambaia Norte", lat: -15.8654, lng: -48.0935, dataInicio: "2026-06-19", dataFim: "2026-06-21", gratuito: true },
+            { nome: "Arraiá Paróquia São Sebastião", local: "Brazlândia", lat: -15.6713, lng: -48.2012, dataInicio: "2026-06-19", dataFim: "2026-06-20", gratuito: true },
+            { nome: "Bosque do Sudoeste", local: "Sudoeste", lat: -15.7981, lng: -47.9252, dataInicio: "2026-06-19", dataFim: "2026-06-20", gratuito: true },
+            { nome: "Festa Junina da AABB", local: "AABB", lat: -15.8202, lng: -47.8683, dataInicio: "2026-06-19", dataFim: "2026-06-20", gratuito: false },
+            { nome: "Festa Junina da Padroeira", local: "Park Way", lat: -15.8741, lng: -47.9542, dataInicio: "2026-06-19", dataFim: "2026-06-21", gratuito: true },
+            { nome: "Festa Junina da Paróquia Nossa Senhora da Providência", local: "Santa Maria", lat: -16.0211, lng: -47.9942, dataInicio: "2026-06-19", dataFim: "2026-06-21", gratuito: true },
+            { nome: "Quermesse de São João Batista", local: "Gama", lat: -16.0171, lng: -48.0644, dataInicio: "2026-06-19", dataFim: "2026-06-21", gratuito: true },
+            { nome: "Arraiá da APAE-DF", local: "911 Norte", lat: -15.7275, lng: -47.9044, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: true },
+            { nome: "Arraiá do Brasília Country Club", local: "Brasília Country Club", lat: -15.9082, lng: -47.9701, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: false },
+            { nome: "Arraiá do Chiquinho", local: "Ceilândia", lat: -15.8105, lng: -48.1147, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: true },
+            { nome: "Arraiá do Clube das Nações", local: "Clube das Nações", lat: -15.8183, lng: -47.8718, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: false },
+            { nome: "Arraiá do CorJesu", local: "Colégio CorJesu", lat: -15.8112, lng: -47.8921, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: false },
+            { nome: "Arraiá do Country", local: "Country Clube", lat: -15.9082, lng: -47.9701, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: false },
+            { nome: "Arraiá do Sagrado 2026", local: "Colégio Sagrado Coração de Maria", lat: -15.7602, lng: -47.8861, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: false },
+            { nome: "Arraiá Marista", local: "Taguatinga", lat: -15.8322, lng: -48.0561, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: true },
+            { nome: "Arraiá Sara Gama", local: "Gama", lat: -16.0171, lng: -48.0644, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: false },
+            { nome: "Arraiá Sentido da Vida", local: "São Sebastião", lat: -15.9014, lng: -47.7716, dataInicio: "2026-06-20", dataFim: "2026-06-21", gratuito: true },
+            { nome: "Festa Junina do Lamana", local: "Samambaia Norte", lat: -15.8654, lng: -48.0935, dataInicio: "2026-06-20", dataFim: "2026-06-20", gratuito: true },
+            { nome: "9º São João do Guará", local: "Guará II", lat: -15.8281, lng: -47.9832, dataInicio: "2026-06-25", dataFim: "2026-06-28", gratuito: true },
+            { nome: "Arraiá da Basílica", local: "915 Norte", lat: -15.7171, lng: -47.9044, dataInicio: "2026-06-25", dataFim: "2026-06-27", gratuito: true },
+            { nome: "Santa Cruz e Santa Edwiges", local: "905 Sul", lat: -15.8102, lng: -47.9061, dataInicio: "2026-06-25", dataFim: "2026-06-28", gratuito: true },
+            { nome: "Arraiá da ASSTJ", local: "STJ", lat: -15.8122, lng: -47.8711, dataInicio: "2026-06-26", dataFim: "2026-06-26", gratuito: false },
+            { nome: "Arraiá da Esperança", local: "Vicente Pires", lat: -15.8033, lng: -48.0261, dataInicio: "2026-06-26", dataFim: "2026-06-28", gratuito: true },
+            { nome: "Arraiá de Frei Galvão", local: "Lago Norte", lat: -15.7331, lng: -47.8502, dataInicio: "2026-06-26", dataFim: "2026-06-27", gratuito: true },
+            { nome: "Arraiá do São Chicão", local: "908 Sul", lat: -15.8181, lng: -47.9122, dataInicio: "2026-06-26", dataFim: "2026-06-27", gratuito: true },
+            { nome: "Esquenta Junino", local: "Ceilândia Norte", lat: -15.8105, lng: -48.1147, dataInicio: "2026-06-26", dataFim: "2026-06-28", gratuito: true },
+            { nome: "Festa Junina Nossa Senhora do Perpétuo Socorro", local: "Lago Sul", lat: -15.8455, lng: -47.8347, dataInicio: "2026-06-26", dataFim: "2026-06-27", gratuito: true },
+            { nome: "Festa Junina Paróquia São Judas Tadeu", local: "Taguatinga Norte", lat: -15.8164, lng: -48.0683, dataInicio: "2026-06-26", dataFim: "2026-06-28", gratuito: true },
+            { nome: "Arraiá Colégio Ideal", local: "Park Way", lat: -15.8741, lng: -47.9542, dataInicio: "2026-06-27", dataFim: "2026-06-28", gratuito: false },
+            { nome: "Arraiá da Assefaz", local: "Clube Olímpico Assefaz", lat: -15.8183, lng: -47.8718, dataInicio: "2026-06-27", dataFim: "2026-06-27", gratuito: false },
+            { nome: "Arraiá da Vila", local: "Lago Sul", lat: -15.8455, lng: -47.8347, dataInicio: "2026-06-27", dataFim: "2026-06-27", gratuito: false },
+            { nome: "Arraiá na UCB", local: "Universidade Católica de Brasília", lat: -15.8654, lng: -48.0322, dataInicio: "2026-06-27", dataFim: "2026-06-27", gratuito: false },
+            { nome: "Caipiro COC", local: "Park Way", lat: -15.8741, lng: -47.9542, dataInicio: "2026-06-27", dataFim: "2026-06-27", gratuito: false },
+            { nome: "Quermesse do Paulinho", local: "Riacho Fundo II", lat: -15.8821, lng: -48.0163, dataInicio: "2026-06-27", dataFim: "2026-06-27", gratuito: false },
+        ];
+
+        // Função para formatar datas no padrão BR
+        function formatarDataBR(dataString) {
+            const [ano, mes, dia] = dataString.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        // Função para criar o ícone com base na gratuidade
+        function criarIcone(gratuito) {
+            const cor = gratuito ? '#28a745' : '#dc3545';
+            
+            const markerHtmlStyles = `
+                background-color: ${cor};
+                width: 16px;
+                height: 16px;
+                display: block;
+                left: -8px;
+                top: -8px;
+                position: relative;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            `;
+
+            return L.divIcon({
+                className: "custom-pin",
+                iconAnchor: [0, 0],
+                labelAnchor: [-6, 0],
+                popupAnchor: [0, -10],
+                html: `<span style="${markerHtmlStyles}" />`
+            });
+        }
+
+        // Função principal de filtragem e renderização
+        function filtrarEventos() {
+            marcadoresLayer.clearLayers();
+
+            const startDateInput = document.getElementById('startDate').value;
+            const endDateInput = document.getElementById('endDate').value;
+
+            if (!startDateInput || !endDateInput) {
+                alert("Por favor, selecione as datas de início e fim.");
+                return;
+            }
+
+            const filtroInicio = new Date(startDateInput);
+            const filtroFim = new Date(endDateInput);
+
+            eventos.forEach(evento => {
+                // Pula a renderização se o evento não tiver coordenadas definidas
+                if (evento.lat === null || evento.lng === null) return;
+
+                const eventoInicio = new Date(evento.dataInicio);
+                const eventoFim = new Date(evento.dataFim);
+
+                if (eventoInicio <= filtroFim && eventoFim >= filtroInicio) {
+                    
+                    const icone = criarIcone(evento.gratuito);
+                    const marcador = L.marker([evento.lat, evento.lng], { icon: icone });
+                    
+                    const popupHTML = `
+                        <div class="popup-content">
+                            <h3>${evento.nome}</h3>
+                            <p><strong>Local:</strong> ${evento.local}</p>
+                            <p><strong>Período:</strong> ${formatarDataBR(evento.dataInicio)} a ${formatarDataBR(evento.dataFim)}</p>
+                            <p><strong>Entrada:</strong> ${evento.gratuito ? 'Gratuita' : 'Paga'}</p>
+                        </div>
+                    `;
+                    
+                    marcador.bindPopup(popupHTML);
+                    marcadoresLayer.addLayer(marcador);
+                }
+            });
+        }
+
+        // Renderização inicial
+        filtrarEventos();
+    </script>
+</body>
+</html>
