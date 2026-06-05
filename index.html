@@ -324,10 +324,12 @@
   .pop h3{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 8px;color:var(--ink);line-height:1.15;}
   .pop-meta{margin:4px 0;font-size:13px;color:var(--ink);}
   .pop-meta strong{color:var(--ember-deep);}
+  .pop-actions{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:12px;}
   .pop-link{
-    display:inline-block;margin-top:10px;font-weight:700;font-size:13px;
+    display:inline-block;font-weight:700;font-size:13px;
     color:var(--ember-deep);text-decoration:none;
   }
+  .pop-link.as-btn{background:none;border:0;padding:0;font-family:inherit;cursor:pointer;}
   .pop-link:hover{text-decoration:underline;}
 
   @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
@@ -654,6 +656,7 @@
   const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const fmtBR = (iso) => { const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; };
   const esc = (s) => (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const ehCelular = () => window.matchMedia('(max-width: 880px)').matches;
 
   const datasIni = eventos.map(e=>e.dataInicio).sort();
   const datasFim = eventos.map(e=>e.dataFim).sort();
@@ -686,7 +689,10 @@
       <h3>${esc(e.nome)}</h3>
       <p class="pop-meta">📍 ${esc(e.local)} · <strong>${esc(e.regiao)}</strong></p>
       <p class="pop-meta">🗓️ ${periodo}</p>
-      <a class="pop-link" href="${maps}" target="_blank" rel="noopener">Como chegar →</a>
+      <div class="pop-actions">
+        <a class="pop-link" href="${maps}" target="_blank" rel="noopener">Como chegar →</a>
+        <button class="pop-link as-btn" type="button" onclick="verNaLista(${e.id})">Ver na lista</button>
+      </div>
     </div>`;
   }
   function cardHTML(e){
@@ -736,7 +742,9 @@
     const card = idCard[id];
     if (card){
       card.classList.add('is-active');
-      if (!vindoDaLista) card.scrollIntoView({block:'nearest', behavior:'smooth'});
+      // no desktop a lista rola dentro do painel (não atrapalha); no celular ela fica
+      // embaixo do mapa, então NÃO rolamos a página — quem quiser usa "Ver na lista" no popup
+      if (!vindoDaLista && !ehCelular()) card.scrollIntoView({block:'nearest', behavior:'smooth'});
     }
     const m = idMarker[id];
     if (m){
@@ -863,6 +871,22 @@
     app.classList.toggle('panel-left',  paraEsquerda);
     ressincronizarMapa();
   });
+
+  // chamado pelo botão "Ver na lista" dentro do popup do mapa
+  function verNaLista(id){
+    if (app.classList.contains('panel-hidden')){      // se a lista estiver oculta, mostra
+      app.classList.remove('panel-hidden');
+      btnShow.hidden = true;
+      ressincronizarMapa();
+    }
+    const card = idCard[id];
+    if (!card) return;
+    document.querySelectorAll('.card.is-active').forEach(c => c.classList.remove('is-active'));
+    card.classList.add('is-active');
+    // espera um tiquinho (caso a lista tenha acabado de reaparecer) e rola até o card
+    setTimeout(() => card.scrollIntoView({ behavior:'smooth', block: ehCelular() ? 'center' : 'nearest' }), 60);
+  }
+  window.verNaLista = verNaLista;
 
   // ocultar / mostrar a barra superior (filtros)
   const header    = document.querySelector('header');
