@@ -1,172 +1,443 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Arraiás - DF 2026</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <style>
-        :root {
-            --bg-color: #f4f4f9;
-            --panel-bg: #ffffff;
-            --text-color: #333333;
-            --border-color: #dddddd;
-            --primary: #4a90e2;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Arraiás · DF 2026</title>
+<meta name="description" content="Mapa interativo das festas juninas e arraiás do Distrito Federal em 2026. Filtre por região, data e tipo de entrada.">
 
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-        header {
-            background-color: var(--panel-bg);
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
+<style>
+  :root{
+    --cream:#fbf2e1;
+    --paper:#fffaf1;
+    --ink:#2c2118;
+    --ink-soft:#7a6a58;
+    --ember:#e0531f;
+    --ember-deep:#bd3f12;
+    --gold:#f2a93b;
+    --green:#2f9e44;
+    --green-deep:#237a36;
+    --paid:#cf3b28;
+    --blue:#3b82c4;
+    --line:#ecdcbe;
+    --line-strong:#e0cba0;
+    --shadow-sm:0 2px 8px rgba(90,55,20,.10);
+    --shadow:0 10px 30px rgba(90,55,20,.16);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Manrope',system-ui,sans-serif;
+    color:var(--ink);
+    background-color:var(--cream);
+    background-image:
+      radial-gradient(1200px 600px at 12% -10%, rgba(242,169,59,.18), transparent 60%),
+      radial-gradient(1000px 500px at 110% 0%, rgba(224,83,31,.12), transparent 55%);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
 
-        h1 {
-            margin: 0 0 15px 0;
-            font-size: 24px;
-        }
+  /* ---------- Header ---------- */
+  header{
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    box-shadow:var(--shadow-sm);
+    z-index:1100;
+    flex:none;
+  }
+  .head-top{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:16px 22px 12px;
+    max-width:1500px;
+    margin:0 auto;
+    width:100%;
+    animation:rise .5s ease both;
+  }
+  .mark{
+    flex:none;
+    width:32px;height:32px;
+    display:grid;place-items:center;
+    color:var(--ember);
+  }
+  .mark svg{display:block;}
+  .brand h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:clamp(20px,3.4vw,30px);
+    margin:0;
+    letter-spacing:-.01em;
+    line-height:1.05;
+  }
+  .brand h1 .yr{color:var(--ember);}
+  .brand p{
+    margin:2px 0 0;
+    font-size:13px;
+    color:var(--ink-soft);
+    font-weight:500;
+  }
+  .header-toggle{margin-left:auto;align-self:center;}
+  header.is-collapsed .header-toggle svg{transform:rotate(180deg);}
+  header.is-collapsed .head-top{padding-bottom:14px;}
+  header.is-collapsed .brand p{
+    max-height:0;opacity:0;margin-top:0;overflow:hidden;
+    transition:max-height .3s ease,opacity .2s ease,margin .3s ease;
+  }
+  header.is-collapsed .bunting{max-height:0;}
+  header.is-collapsed .controls{
+    max-height:0;opacity:0;padding-top:0;padding-bottom:0;
+  }
 
-        .controls {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+  .bunting{
+    height:19px;max-height:19px;overflow:hidden;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='20'%3E%3Cline x1='0' y1='2.5' x2='80' y2='2.5' stroke='%23c2a064' stroke-width='1.5'/%3E%3Cpolygon points='2 2 18 2 10 17' fill='%23e0531f'/%3E%3Cpolygon points='22 2 38 2 30 17' fill='%23f2a93b'/%3E%3Cpolygon points='42 2 58 2 50 17' fill='%232f9e44'/%3E%3Cpolygon points='62 2 78 2 70 17' fill='%233b82c4'/%3E%3C/svg%3E");
+    background-repeat:repeat-x;
+    background-size:80px 19px;
+    background-position:center top;
+    transition:max-height .35s ease;
+  }
 
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
+  /* ---------- Controls ---------- */
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    gap:12px 14px;
+    padding:14px 22px 16px;
+    max-width:1500px;
+    margin:0 auto;
+    width:100%;
+    max-height:500px;overflow:hidden;
+    animation:rise .55s ease both;
+    transition:max-height .38s ease, opacity .25s ease, padding .38s ease;
+  }
+  .field{display:flex;flex-direction:column;gap:5px;min-width:0;}
+  .field label{
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  select,input[type="date"],input[type="search"]{
+    font-family:inherit;
+    font-size:14px;
+    color:var(--ink);
+    background:var(--paper);
+    border:1.5px solid var(--line-strong);
+    border-radius:10px;
+    padding:9px 11px;
+    height:40px;
+    transition:border-color .15s, box-shadow .15s;
+    -webkit-appearance:none;appearance:none;
+  }
+  select{
+    padding-right:32px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237a6a58' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 11px center;
+    cursor:pointer;
+    min-width:160px;
+  }
+  input[type="search"]{min-width:190px;}
+  select:focus,input:focus{
+    outline:none;
+    border-color:var(--ember);
+    box-shadow:0 0 0 3px rgba(224,83,31,.16);
+  }
+  .chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .chip{
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ember-deep);
+    background:rgba(224,83,31,.08);
+    border:1.5px solid rgba(224,83,31,.22);
+    border-radius:999px;
+    padding:8px 14px;
+    cursor:pointer;
+    transition:all .15s;
+    white-space:nowrap;
+  }
+  .chip:hover{background:rgba(224,83,31,.16);}
+  .chip.is-active{
+    background:linear-gradient(150deg,var(--gold),var(--ember));
+    color:#fff;border-color:transparent;
+    box-shadow:0 4px 10px rgba(224,83,31,.3);
+  }
+  .chip.ghost{
+    color:var(--ink-soft);
+    background:transparent;
+    border-color:var(--line-strong);
+  }
+  .chip.ghost:hover{background:rgba(0,0,0,.04);color:var(--ink);}
 
-        label {
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
+  /* ---------- Main / layout ---------- */
+  main{flex:1;display:flex;min-height:0;}
+  #list-panel{
+    width:374px;flex:none;
+    display:flex;flex-direction:column;min-height:0;
+    background:var(--paper);
+    border-right:1px solid var(--line);
+  }
+  .list-head{
+    padding:13px 12px 10px 18px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .head-actions{display:flex;gap:6px;flex:none;}
+  .icon-btn{
+    width:34px;height:34px;flex:none;
+    display:grid;place-items:center;cursor:pointer;
+    background:var(--paper);border:1.5px solid var(--line-strong);
+    border-radius:9px;color:var(--ink-soft);
+    transition:color .15s,border-color .15s,background .15s;
+  }
+  .icon-btn:hover{color:var(--ember-deep);border-color:var(--ember);background:#fff;}
+  .icon-btn svg{display:block;}
+  .legend-row{padding:0 18px 13px;border-bottom:1px solid var(--line);}
+  .count{font-weight:800;font-size:15px;}
+  .count b{color:var(--ember);}
+  .legend{display:flex;gap:14px;font-size:12.5px;color:var(--ink-soft);font-weight:600;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);}
+  .dot.free{background:var(--green);}
+  .dot.paid{background:var(--paid);}
 
-        input[type="date"] {
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 14px;
-        }
+  /* lado / ocultar */
+  #app.panel-hidden #list-panel{display:none;}
+  #app.panel-left #btnHide svg{transform:scaleX(-1);}
+  .reopen{
+    position:fixed;bottom:18px;right:18px;z-index:1200;
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:inherit;font-size:14px;font-weight:700;color:#fff;cursor:pointer;
+    background:linear-gradient(150deg,var(--gold),var(--ember));
+    border:none;border-radius:11px;padding:11px 16px;
+    box-shadow:var(--shadow);
+  }
+  .reopen svg{display:block;}
+  .reopen[hidden]{display:none;}
+  @media (min-width:881px){
+    #app.panel-right #map{order:1;}
+    #app.panel-right #list-panel{order:2;border-right:none;border-left:1px solid var(--line);}
+    #app.panel-left #map{order:2;}
+    #app.panel-left #list-panel{order:1;}
+  }
 
-        button {
-            padding: 10px 20px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 17px;
-        }
+  .list{overflow-y:auto;flex:1;padding:10px;scroll-behavior:smooth;}
+  .list::-webkit-scrollbar{width:10px;}
+  .list::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:10px;border:3px solid var(--paper);}
 
-        button:hover {
-            background-color: #357abd;
-        }
+  .card{
+    display:flex;align-items:stretch;gap:12px;
+    width:100%;text-align:left;
+    font-family:inherit;
+    background:var(--paper);
+    border:1.5px solid var(--line);
+    border-radius:var(--radius);
+    padding:11px 12px;
+    margin-bottom:9px;
+    cursor:pointer;
+    transition:transform .12s, border-color .15s, box-shadow .15s;
+    animation:rise .4s ease both;
+  }
+  .card:hover{transform:translateY(-2px);border-color:var(--line-strong);box-shadow:var(--shadow-sm);}
+  .card.is-active{
+    border-color:var(--ember);
+    box-shadow:0 0 0 3px rgba(224,83,31,.16),var(--shadow-sm);
+    background:#fff8ee;
+  }
+  .cal{
+    flex:none;width:50px;
+    border-radius:11px;overflow:hidden;
+    display:flex;flex-direction:column;
+    border:1.5px solid var(--line-strong);
+    text-align:center;
+    background:#fff;
+  }
+  .cal-m{background:var(--ember);color:#fff;font-size:10px;font-weight:800;letter-spacing:.06em;padding:2px 0;}
+  .cal-d{font-family:'Fraunces',serif;font-weight:600;font-size:22px;color:var(--ink);padding:4px 0 5px;line-height:1;}
+  .card-body{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;justify-content:center;}
+  .card-name{font-weight:700;font-size:14.5px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .card-meta{font-size:12px;color:var(--ink-soft);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .card-period{font-size:12px;color:var(--ink-soft);font-weight:600;}
+  .badge{
+    flex:none;align-self:flex-start;
+    font-size:10.5px;font-weight:800;letter-spacing:.03em;
+    padding:4px 9px;border-radius:999px;text-transform:uppercase;
+  }
+  .badge.free{color:var(--green-deep);background:rgba(47,158,68,.13);}
+  .badge.paid{color:var(--paid);background:rgba(207,59,40,.12);}
 
-        .legend {
-            display: flex;
-            gap: 15px;
-            margin-top: 17px;
-            align-items: center;
-            font-size: 14px;
-        }
+  .empty{
+    text-align:center;color:var(--ink-soft);
+    padding:48px 24px;
+  }
+  .empty .em-emoji{font-size:38px;}
+  .empty h3{font-family:'Fraunces',serif;color:var(--ink);margin:12px 0 6px;font-weight:600;}
+  .empty p{margin:0 0 16px;font-size:14px;line-height:1.5;}
+  .empty button{
+    font-family:inherit;font-size:14px;font-weight:700;color:#fff;cursor:pointer;
+    background:linear-gradient(150deg,var(--gold),var(--ember));
+    border:none;border-radius:10px;padding:11px 18px;
+    box-shadow:0 4px 12px rgba(224,83,31,.3);
+  }
 
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
+  #map{flex:1;min-height:0;background:#e8e2d4;}
 
-        .dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
-        }
+  /* ---------- Leaflet overrides ---------- */
+  .pin{
+    display:block;width:16px;height:16px;border-radius:50%;
+    border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);
+  }
+  .pin.free{background:var(--green);}
+  .pin.paid{background:var(--paid);}
+  .pin.active{
+    width:22px;height:22px;margin:-3px;
+    box-shadow:0 0 0 4px rgba(224,83,31,.35),0 2px 6px rgba(0,0,0,.45);
+    animation:pulse 1.5s ease-out infinite;z-index:1000;
+  }
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(224,83,31,.5),0 2px 6px rgba(0,0,0,.45)}70%{box-shadow:0 0 0 12px rgba(224,83,31,0),0 2px 6px rgba(0,0,0,.45)}100%{box-shadow:0 0 0 0 rgba(224,83,31,0),0 2px 6px rgba(0,0,0,.45)}}
 
-        .dot.free { background-color: #28a745; }
-        .dot.paid { background-color: #dc3545; }
+  .leaflet-popup-content-wrapper{
+    border-radius:14px;border:1.5px solid var(--line-strong);
+    box-shadow:var(--shadow);padding:2px;
+  }
+  .leaflet-popup-content{margin:14px 16px;font-family:'Manrope',sans-serif;}
+  .leaflet-popup-tip{border:1.5px solid var(--line-strong);}
+  .pop{min-width:200px;}
+  .pop-badge{
+    display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.03em;
+    text-transform:uppercase;padding:4px 9px;border-radius:999px;margin-bottom:8px;
+  }
+  .pop-badge.free{color:var(--green-deep);background:rgba(47,158,68,.14);}
+  .pop-badge.paid{color:var(--paid);background:rgba(207,59,40,.13);}
+  .pop h3{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 8px;color:var(--ink);line-height:1.15;}
+  .pop-meta{margin:4px 0;font-size:13px;color:var(--ink);}
+  .pop-meta strong{color:var(--ember-deep);}
+  .pop-link{
+    display:inline-block;margin-top:10px;font-weight:700;font-size:13px;
+    color:var(--ember-deep);text-decoration:none;
+  }
+  .pop-link:hover{text-decoration:underline;}
 
-        #map {
-            flex: 1;
-            width: 100%;
-        }
+  @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
 
-        .popup-content h3 {
-            margin: 0 0 5px 0;
-            font-size: 16px;
-        }
-        
-        .popup-content p {
-            margin: 2px 0;
-            font-size: 14px;
-        }
-    </style>
+  /* ---------- Mobile ---------- */
+  @media (max-width:880px){
+    body{overflow:auto;height:auto;min-height:100%;}
+    main{flex-direction:column;}
+    #map{order:-1;height:64vh;min-height:360px;flex:none;}
+    #app.panel-hidden #map{height:82vh;}
+    #btnSide{display:none;}
+    #list-panel{width:auto;border-right:none;border-top:1px solid var(--line);}
+    .list{max-height:none;overflow:visible;}
+    .head-top{padding:14px 16px 10px;}
+    .controls{padding:12px 16px 14px;}
+    select,input[type="search"]{min-width:0;width:100%;}
+    .field{flex:1 1 140px;}
+    .field.search{flex-basis:100%;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;scroll-behavior:auto !important;}
+  }
+</style>
 </head>
 <body>
 
-    <header>
-        <h1>Mapa de Arraiás - Distrito Federal (2026)</h1>
-        <div class="controls">
-            <div class="control-group">
-                <label for="startDate">Data Inicial</label>
-                <input type="date" id="startDate" value="2026-05-01">
-            </div>
-            <div class="control-group">
-                <label for="endDate">Data Final</label>
-                <input type="date" id="endDate" value="2026-06-30">
-            </div>
-            <button onclick="filtrarEventos()">Filtrar</button>
-            
-            <div class="legend">
-                <div class="legend-item">
-                    <span class="dot free"></span> Gratuito
-                </div>
-                <div class="legend-item">
-                    <span class="dot paid"></span> Pago
-                </div>
-            </div>
+  <header>
+    <div class="head-top">
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>
+      <div class="brand">
+        <h1>Mapa de Arraiás <span class="yr">· DF 2026</span></h1>
+        <p>Festas juninas pelo Distrito Federal — ache a sua e bora pular fogueira</p>
+      </div>
+      <button class="icon-btn header-toggle" id="btnHeader" type="button" title="Ocultar filtros" aria-label="Ocultar filtros" aria-expanded="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+    </div>
+    <div class="bunting" aria-hidden="true"></div>
+    <div class="controls">
+      <div class="field">
+        <label for="regiao">Região</label>
+        <select id="regiao"></select>
+      </div>
+      <div class="field">
+        <label for="tipo">Entrada</label>
+        <select id="tipo">
+          <option value="todas">Todas</option>
+          <option value="gratis">Só gratuitas</option>
+          <option value="pago">Só pagas</option>
+        </select>
+      </div>
+      <div class="field search">
+        <label for="busca">Buscar por nome</label>
+        <input type="search" id="busca" placeholder="ex.: Guadá, São João, Park Way…">
+      </div>
+      <div class="field">
+        <label for="startDate">A partir de</label>
+        <input type="date" id="startDate">
+      </div>
+      <div class="field">
+        <label for="endDate">Até</label>
+        <input type="date" id="endDate">
+      </div>
+      <div class="chips" role="group" aria-label="Filtros rápidos de data">
+        <button class="chip" data-preset="hoje">Hoje</button>
+        <button class="chip" data-preset="fds">Fim de semana</button>
+        <button class="chip" data-preset="tudo">Toda a temporada</button>
+        <button class="chip ghost" data-preset="limpar">Limpar filtros</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app" class="panel-right">
+    <aside id="list-panel">
+      <div class="list-head">
+        <div class="count" id="count">—</div>
+        <div class="head-actions">
+          <button class="icon-btn" id="btnSide" type="button" title="Trocar lista de lado" aria-label="Trocar lista de lado">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 21 7 17 3"/><line x1="21" y1="7" x2="9" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="15" y1="17" x2="3" y2="17"/></svg>
+          </button>
+          <button class="icon-btn" id="btnHide" type="button" title="Ocultar lista" aria-label="Ocultar lista">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
-    </header>
+      </div>
+      <div class="legend-row">
+        <div class="legend">
+          <span><i class="dot free"></i>Gratuito</span>
+          <span><i class="dot paid"></i>Pago</span>
+        </div>
+      </div>
+      <div class="list" id="list"></div>
+    </aside>
+    <div id="map" aria-label="Mapa dos arraiás do Distrito Federal"></div>
+  </main>
 
-    <div id="map"></div>
+  <button class="reopen" id="btnShow" type="button" hidden>
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+    Mostrar lista
+  </button>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <script>
-        // Inicialização do mapa centrado em Brasília
-        const map = L.map('map').setView([-15.793889, -47.882778], 11);
-
-        // Camada visual do OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        // Grupo de marcadores para gerenciar as atualizações no mapa
-        let marcadoresLayer = L.layerGroup().addTo(map);
-
-        // Base de dados de eventos (Eventos das imagens incluídos, coordenadas nulas para evitar alucinação)
-        const eventos = [
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+  /* =========================================================
+     BASE DE DADOS  (edite/adicione eventos aqui)
+     Campos: nome, local, lat, lng, dataInicio, dataFim, gratuito
+     A região é calculada automaticamente — não precisa preencher.
+  ========================================================= */
+  const eventos = [
             { nome: "Festa Junina da Paróquia Nossa Senhora Consolata", local: "913 Norte", lat: -15.7275, lng: -47.9044, dataInicio: "2026-05-15", dataFim: "2026-05-16", gratuito: false },
             { nome: "Arraiá do Operário", local: "Vicente Pires", lat: -15.8033, lng: -48.0261, dataInicio: "2026-05-16", dataFim: "2026-05-17", gratuito: true },
             { nome: "Festa Junina da Paróquia São Pedro e São Paulo", local: "M Norte", lat: -15.8078, lng: -48.0963, dataInicio: "2026-05-16", dataFim: "2026-05-17", gratuito: true },
@@ -302,84 +573,314 @@
             { nome: "Arraiá na UCB", local: "Universidade Católica de Brasília", lat: -15.8654, lng: -48.0322, dataInicio: "2026-06-27", dataFim: "2026-06-27", gratuito: false },
             { nome: "Caipiro COC", local: "Park Way", lat: -15.8741, lng: -47.9542, dataInicio: "2026-06-27", dataFim: "2026-06-27", gratuito: false },
             { nome: "Quermesse do Paulinho", local: "Riacho Fundo II", lat: -15.8821, lng: -48.0163, dataInicio: "2026-06-27", dataFim: "2026-06-27", gratuito: false },
-        ];
+  ];
 
-        // Função para formatar datas no padrão BR
-        function formatarDataBR(dataString) {
-            const [ano, mes, dia] = dataString.split('-');
-            return `${dia}/${mes}/${ano}`;
-        }
+  /* =========================================================
+     CLASSIFICAÇÃO POR REGIÃO ADMINISTRATIVA
+     Usa o texto do "local" + as coordenadas (pra não confundir,
+     por ex., "M Norte" de Taguatinga com a Asa Norte).
+  ========================================================= */
+  const norm = (s) => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
-        // Função para criar o ícone com base na gratuidade
-        function criarIcone(gratuito) {
-            const cor = gratuito ? '#28a745' : '#dc3545';
-            
-            const markerHtmlStyles = `
-                background-color: ${cor};
-                width: 16px;
-                height: 16px;
-                display: block;
-                left: -8px;
-                top: -8px;
-                position: relative;
-                border-radius: 50%;
-                border: 2px solid white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            `;
+  function noPlanoPiloto(lat,lng){
+    return lat >= -15.84 && lat <= -15.71 && lng >= -47.94 && lng <= -47.85;
+  }
+  function getRegiao(local, lat, lng){
+    const l = norm(local);
+    if (l.includes('ceilandia')) return 'Ceilândia';
+    if (l.includes('taguatinga') || l.includes('shsn') || l === 'm norte' ||
+        l.includes('cdj') || l.includes('catolica') || l.includes('canil') ||
+        l.includes('dom delius') || l.includes('jk shopping')) return 'Taguatinga';
+    if (l.includes('samambaia')) return 'Samambaia';
+    if (l.includes('aguas claras') || l.includes('uniplan') || l.includes('metropole')) return 'Águas Claras';
+    if (l.includes('guara')) return 'Guará';
+    if (l.includes('ponte alta') || l.includes('gama')) return 'Gama';
+    if (l.includes('santa maria')) return 'Santa Maria';
+    if (l.includes('recanto')) return 'Recanto das Emas';
+    if (l.includes('riacho')) return 'Riacho Fundo';
+    if (l.includes('sao sebastiao') || l.includes('mangueiral')) return 'São Sebastião';
+    if (l.includes('jardim botanico') || l.includes('mcjb')) return 'Jardim Botânico';
+    if (l.includes('paranoa')) return 'Paranoá';
+    if (l.includes('sobradinho') || l.includes('fercal')) return 'Sobradinho';
+    if (l.includes('brazlandia') || l.includes('morada nobre')) return 'Brazlândia';
+    if (l.includes('nucleo bandeirante')) return 'Núcleo Bandeirante';
+    if (l.includes('candangolandia')) return 'Candangolândia';
+    if (l.includes('park way') || l.includes('smpw') || l.includes('cordel') ||
+        l.includes('coc') || l.includes('ideal') || l.includes('country')) return 'Park Way';
+    if (l.includes('vicente pires')) return 'Vicente Pires';
+    if (l.includes('estrutural')) return 'Estrutural';
+    if (l.includes('varjao')) return 'Varjão';
+    if (l.includes('cruzeiro')) return 'Cruzeiro';
+    if (l.includes('sudoeste') || l.includes('octogonal')) return 'Sudoeste/Octogonal';
+    if (l.includes('noroeste')) return 'Noroeste';
+    if (l.includes('lago norte') || l.includes('iate')) return 'Lago Norte';
+    if (l.includes('lago sul')) return 'Lago Sul';
+    if (l.includes('rio preto') || l.includes('pad-df') || l.includes('pad df') || l.includes('tororo')) return 'Zona Rural';
+    if (l.includes('eixo monumental')) return 'Eixo Monumental';
+    if (l.includes('smu') || l.includes('exercito')) return 'Setor Militar (SMU)';
+    if (noPlanoPiloto(lat,lng)){
+      if (/\bnorte\b/.test(l) || /\bsqn\b/.test(l) || /\beqn\b/.test(l)) return 'Asa Norte';
+      if (/\bsul\b/.test(l) || /\bsqs\b/.test(l) || /\beqs\b/.test(l) ||
+          l.includes('ascade') || l.includes('asbac') || l.includes('agepol') || l.includes('santissimo')) return 'Asa Sul';
+      return lat < -15.79 ? 'Asa Sul' : 'Asa Norte';
+    }
+    return 'Outras';
+  }
 
-            return L.divIcon({
-                className: "custom-pin",
-                iconAnchor: [0, 0],
-                labelAnchor: [-6, 0],
-                popupAnchor: [0, -10],
-                html: `<span style="${markerHtmlStyles}" />`
-            });
-        }
+  // Pré-processa: id estável, região, e separa marcadores empilhados
+  eventos.forEach((e,i) => { e.id = i; e.regiao = getRegiao(e.local, e.lat, e.lng); });
+  (function espalharCoincidentes(){
+    const grupos = {};
+    eventos.forEach(e => {
+      const k = e.lat.toFixed(4)+','+e.lng.toFixed(4);
+      (grupos[k] = grupos[k] || []).push(e);
+    });
+    Object.values(grupos).forEach(g => {
+      if (g.length === 1){ g[0]._lat = g[0].lat; g[0]._lng = g[0].lng; return; }
+      const R = 0.00055, baseLat = g[0].lat, baseLng = g[0].lng;
+      const kx = 1 / Math.cos(baseLat * Math.PI/180);
+      g.forEach((e,i) => {
+        const ang = (2*Math.PI*i)/g.length;
+        e._lat = baseLat + R*Math.cos(ang);
+        e._lng = baseLng + R*Math.sin(ang)*kx;
+      });
+    });
+  })();
 
-        // Função principal de filtragem e renderização
-        function filtrarEventos() {
-            marcadoresLayer.clearLayers();
+  /* =========================================================
+     HELPERS DE DATA
+  ========================================================= */
+  const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const fmtBR = (iso) => { const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; };
+  const esc = (s) => (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-            const startDateInput = document.getElementById('startDate').value;
-            const endDateInput = document.getElementById('endDate').value;
+  const datasIni = eventos.map(e=>e.dataInicio).sort();
+  const datasFim = eventos.map(e=>e.dataFim).sort();
+  const PRIMEIRA = datasIni[0];
+  const ULTIMA   = datasFim[datasFim.length-1];
+  const HOJE     = toISO(new Date());
 
-            if (!startDateInput || !endDateInput) {
-                alert("Por favor, selecione as datas de início e fim.");
-                return;
-            }
+  /* =========================================================
+     MAPA
+  ========================================================= */
+  const map = L.map('map', { zoomControl:true }).setView([-15.793889,-47.882778], 11);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom:19, subdomains:'abcd'
+  }).addTo(map);
+  const layer = L.layerGroup().addTo(map);
 
-            const filtroInicio = new Date(startDateInput);
-            const filtroFim = new Date(endDateInput);
+  function makeIcon(gratuito, active){
+    return L.divIcon({
+      className:'',
+      iconSize:[16,16], iconAnchor:[8,8], popupAnchor:[0,-9],
+      html:`<span class="pin ${gratuito?'free':'paid'}${active?' active':''}"></span>`
+    });
+  }
+  function popupHTML(e){
+    const periodo = e.dataInicio===e.dataFim ? fmtBR(e.dataInicio) : `${fmtBR(e.dataInicio)} – ${fmtBR(e.dataFim)}`;
+    const maps = `https://www.google.com/maps/search/?api=1&query=${e.lat},${e.lng}`;
+    return `<div class="pop">
+      <span class="pop-badge ${e.gratuito?'free':'paid'}">${e.gratuito?'Entrada gratuita':'Entrada paga'}</span>
+      <h3>${esc(e.nome)}</h3>
+      <p class="pop-meta">📍 ${esc(e.local)} · <strong>${esc(e.regiao)}</strong></p>
+      <p class="pop-meta">🗓️ ${periodo}</p>
+      <a class="pop-link" href="${maps}" target="_blank" rel="noopener">Como chegar →</a>
+    </div>`;
+  }
+  function cardHTML(e){
+    const [, m, d] = e.dataInicio.split('-');
+    const periodo = e.dataInicio===e.dataFim ? fmtBR(e.dataInicio) : `${fmtBR(e.dataInicio)} – ${fmtBR(e.dataFim)}`;
+    return `<span class="cal" aria-hidden="true"><span class="cal-m">${MESES[+m-1]}</span><span class="cal-d">${+d}</span></span>
+      <span class="card-body">
+        <span class="card-name">${esc(e.nome)}</span>
+        <span class="card-meta">${esc(e.regiao)} · ${esc(e.local)}</span>
+        <span class="card-period">${periodo}</span>
+      </span>
+      <span class="badge ${e.gratuito?'free':'paid'}">${e.gratuito?'Grátis':'Pago'}</span>`;
+  }
 
-            eventos.forEach(evento => {
-                // Pula a renderização se o evento não tiver coordenadas definidas
-                if (evento.lat === null || evento.lng === null) return;
+  /* =========================================================
+     ESTADO + RENDER
+  ========================================================= */
+  const elRegiao = document.getElementById('regiao');
+  const elTipo   = document.getElementById('tipo');
+  const elBusca  = document.getElementById('busca');
+  const elStart  = document.getElementById('startDate');
+  const elEnd    = document.getElementById('endDate');
+  const elList   = document.getElementById('list');
+  const elCount  = document.getElementById('count');
 
-                const eventoInicio = new Date(evento.dataInicio);
-                const eventoFim = new Date(evento.dataFim);
+  let idMarker = {}, idCard = {}, ativoId = null;
 
-                if (eventoInicio <= filtroFim && eventoFim >= filtroInicio) {
-                    
-                    const icone = criarIcone(evento.gratuito);
-                    const marcador = L.marker([evento.lat, evento.lng], { icon: icone });
-                    
-                    const popupHTML = `
-                        <div class="popup-content">
-                            <h3>${evento.nome}</h3>
-                            <p><strong>Local:</strong> ${evento.local}</p>
-                            <p><strong>Período:</strong> ${formatarDataBR(evento.dataInicio)} a ${formatarDataBR(evento.dataFim)}</p>
-                            <p><strong>Entrada:</strong> ${evento.gratuito ? 'Gratuita' : 'Paga'}</p>
-                        </div>
-                    `;
-                    
-                    marcador.bindPopup(popupHTML);
-                    marcadoresLayer.addLayer(marcador);
-                }
-            });
-        }
+  // popular dropdown de regiões só com as que têm eventos
+  (function popularRegioes(){
+    const regs = [...new Set(eventos.map(e=>e.regiao))].sort((a,b)=>{
+      if (a==='Outras') return 1; if (b==='Outras') return -1;
+      return a.localeCompare(b,'pt-BR');
+    });
+    let html = '<option value="__todas__">Todas as regiões</option>';
+    regs.forEach(r => {
+      const n = eventos.filter(e=>e.regiao===r).length;
+      html += `<option value="${esc(r)}">${esc(r)} (${n})</option>`;
+    });
+    elRegiao.innerHTML = html;
+  })();
 
-        // Renderização inicial
-        filtrarEventos();
-    </script>
+  function selecionar(id, vindoDaLista){
+    if (ativoId !== null && idMarker[ativoId]){
+      idMarker[ativoId].setIcon(makeIcon(eventos[ativoId].gratuito, false));
+    }
+    document.querySelectorAll('.card.is-active').forEach(c=>c.classList.remove('is-active'));
+    const card = idCard[id];
+    if (card){
+      card.classList.add('is-active');
+      if (!vindoDaLista) card.scrollIntoView({block:'nearest', behavior:'smooth'});
+    }
+    const m = idMarker[id];
+    if (m){
+      m.setIcon(makeIcon(eventos[id].gratuito, true));
+      map.flyTo(m.getLatLng(), Math.max(map.getZoom(),14), {duration:.6});
+      m.openPopup();
+    }
+    ativoId = id;
+  }
+
+  function render(){
+    const regiao = elRegiao.value;
+    const tipo   = elTipo.value;
+    const termo  = norm(elBusca.value);
+    const ini    = elStart.value;
+    const fim    = elEnd.value;
+
+    layer.clearLayers();
+    elList.innerHTML = '';
+    idMarker = {}; idCard = {}; ativoId = null;
+
+    const filtrados = eventos.filter(e => {
+      if (regiao !== '__todas__' && e.regiao !== regiao) return false;
+      if (tipo === 'gratis' && !e.gratuito) return false;
+      if (tipo === 'pago'  &&  e.gratuito) return false;
+      if (termo && !norm(e.nome).includes(termo) && !norm(e.local).includes(termo) && !norm(e.regiao).includes(termo)) return false;
+      if (ini && e.dataFim   < ini) return false;   // termina antes do início do filtro
+      if (fim && e.dataInicio > fim) return false;   // começa depois do fim do filtro
+      return true;
+    }).sort((a,b)=> a.dataInicio.localeCompare(b.dataInicio) || a.nome.localeCompare(b.nome,'pt-BR'));
+
+    const n = filtrados.length;
+    elCount.innerHTML = `<b>${n}</b> ${n===1?'arraiá':'arraiás'}`;
+
+    if (n === 0){
+      const passou = HOJE > ULTIMA;
+      elList.innerHTML = `<div class="empty">
+        <div class="em-emoji">🌽</div>
+        <h3>Nenhum arraiá por aqui</h3>
+        <p>${passou
+            ? 'A temporada junina de 2026 já passou — mas dá pra rever tudo no mapa.'
+            : 'Tente afrouxar os filtros de região, data ou tipo de entrada.'}</p>
+        <button id="verTudo">Ver toda a temporada</button>
+      </div>`;
+      document.getElementById('verTudo').onclick = () => { aplicarPreset('tudo'); };
+      return;
+    }
+
+    filtrados.forEach((e,i) => {
+      const m = L.marker([e._lat, e._lng], { icon: makeIcon(e.gratuito,false), title:e.nome });
+      m.bindPopup(popupHTML(e));
+      m.on('click', () => selecionar(e.id, false));
+      layer.addLayer(m);
+      idMarker[e.id] = m;
+
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'card';
+      card.dataset.id = e.id;
+      card.style.animationDelay = (Math.min(i,18)*22) + 'ms';
+      card.innerHTML = cardHTML(e);
+      card.addEventListener('click', () => selecionar(e.id, true));
+      elList.appendChild(card);
+      idCard[e.id] = card;
+    });
+  }
+
+  /* =========================================================
+     PRESETS / FILTROS RÁPIDOS
+  ========================================================= */
+  function setChipAtivo(preset){
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('is-active', c.dataset.preset===preset));
+  }
+  function fimDeSemana(){
+    const d = new Date(HOJE+'T00:00:00');
+    const dow = d.getDay();           // 0=Dom .. 6=Sáb
+    const sab = new Date(d);
+    if (dow === 0) sab.setDate(d.getDate()-1);            // domingo: usa o sábado anterior
+    else sab.setDate(d.getDate() + ((6-dow+7)%7));        // próximo sábado (hoje, se já for sábado)
+    const dom = new Date(sab); dom.setDate(sab.getDate()+1);
+    return [toISO(sab), toISO(dom)];
+  }
+  function aplicarPreset(preset){
+    if (preset === 'hoje'){ elStart.value = HOJE; elEnd.value = HOJE; setChipAtivo('hoje'); }
+    else if (preset === 'fds'){ const [s,e]=fimDeSemana(); elStart.value=s; elEnd.value=e; setChipAtivo('fds'); }
+    else if (preset === 'tudo'){ elStart.value = PRIMEIRA; elEnd.value = ULTIMA; setChipAtivo('tudo'); }
+    else if (preset === 'limpar'){
+      elRegiao.value='__todas__'; elTipo.value='todas'; elBusca.value='';
+      elStart.value = HOJE < PRIMEIRA ? PRIMEIRA : HOJE;
+      elEnd.value = ULTIMA;
+      setChipAtivo(null);
+    }
+    render();
+  }
+
+  // listeners
+  document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => aplicarPreset(c.dataset.preset)));
+  [elRegiao, elTipo].forEach(el => el.addEventListener('change', () => { setChipAtivo(null); render(); }));
+  [elStart, elEnd].forEach(el => el.addEventListener('change', () => { setChipAtivo(null); render(); }));
+  elBusca.addEventListener('input', render);
+
+  /* =========================================================
+     PAINEL: ocultar / mostrar / trocar de lado
+  ========================================================= */
+  const app     = document.getElementById('app');
+  const btnSide  = document.getElementById('btnSide');
+  const btnHide  = document.getElementById('btnHide');
+  const btnShow  = document.getElementById('btnShow');
+  const ressincronizarMapa = () => setTimeout(() => map.invalidateSize(), 280);
+
+  btnHide.addEventListener('click', () => {
+    app.classList.add('panel-hidden');
+    btnShow.hidden = false;
+    ressincronizarMapa();
+  });
+  btnShow.addEventListener('click', () => {
+    app.classList.remove('panel-hidden');
+    btnShow.hidden = true;
+    ressincronizarMapa();
+  });
+  btnSide.addEventListener('click', () => {
+    const paraEsquerda = app.classList.contains('panel-right');
+    app.classList.toggle('panel-right', !paraEsquerda);
+    app.classList.toggle('panel-left',  paraEsquerda);
+    ressincronizarMapa();
+  });
+
+  // ocultar / mostrar a barra superior (filtros)
+  const header    = document.querySelector('header');
+  const btnHeader = document.getElementById('btnHeader');
+  btnHeader.addEventListener('click', () => {
+    const recolhido = header.classList.toggle('is-collapsed');
+    btnHeader.setAttribute('aria-expanded', String(!recolhido));
+    btnHeader.title = recolhido ? 'Mostrar filtros' : 'Ocultar filtros';
+    btnHeader.setAttribute('aria-label', btnHeader.title);
+    ressincronizarMapa();
+  });
+
+  /* =========================================================
+     ESTADO INICIAL: a partir de HOJE até o fim da temporada
+  ========================================================= */
+  elStart.value = HOJE < PRIMEIRA ? PRIMEIRA : HOJE;
+  elEnd.value   = ULTIMA;
+  render();
+  </script>
 </body>
 </html>
